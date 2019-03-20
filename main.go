@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 )
 
 func main() {
@@ -27,13 +28,19 @@ func main() {
 }
 
 func handle(conn net.Conn) {
+	err := conn.SetDeadline(time.Now().Add(10 * time.Second))
 	defer conn.Close()
+
+	if err != nil {
+		log.Println("Connection timeout not set")
+	}
 
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
 		ln := scanner.Text()
 		fmt.Println(ln)
+		fmt.Fprintf(conn, "I heard you say %s\n", ln)
 	}
 
-	fmt.Println("This is not printed until the Client closes the connection at which point scanner.Scan returns false")
+	fmt.Println("This is printed after the connection is closed due to the deadline")
 }
