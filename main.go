@@ -1,8 +1,8 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
-	"io"
 	"log"
 	"net"
 )
@@ -22,11 +22,18 @@ func main() {
 			log.Panicf("Error in connection %v", err)
 		}
 
-		// Write to TCP Connection socket
-		io.WriteString(conn, "\n Hello from TCP Server")
-		fmt.Fprintln(conn, "How is your day")
-		fmt.Fprintf(conn, "%v", "Well, I hope \n")
-
-		conn.Close()
+		go handle(conn)
 	}
+}
+
+func handle(conn net.Conn) {
+	defer conn.Close()
+
+	scanner := bufio.NewScanner(conn)
+	for scanner.Scan() {
+		ln := scanner.Text()
+		fmt.Println(ln)
+	}
+
+	fmt.Println("This is not printed until the Client closes the connection at which point scanner.Scan returns false")
 }
