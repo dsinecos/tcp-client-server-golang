@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"time"
+	"strings"
 )
+
+type requestHeaders map[string]string
 
 func main() {
 	li, err := net.Listen("tcp", ":9080")
@@ -28,19 +30,27 @@ func main() {
 }
 
 func handle(conn net.Conn) {
-	err := conn.SetDeadline(time.Now().Add(10 * time.Second))
 	defer conn.Close()
 
-	if err != nil {
-		log.Println("Connection timeout not set")
-	}
-
 	scanner := bufio.NewScanner(conn)
+
+	request := requestHeaders{}
+
 	for scanner.Scan() {
 		ln := scanner.Text()
-		fmt.Println(ln)
-		fmt.Fprintf(conn, "I heard you say %s\n", ln)
-	}
+		header := strings.Fields(ln)
+		if len(header) > 0 {
+			request[header[0]] = header[1]
+		}
 
-	fmt.Println("This is printed after the connection is closed due to the deadline")
+		if len(header) > 0 && header[0] == "Host:" {
+			body := fmt.Sprintf(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title></title></head><body><strong>%s</strong></body></html>`, fmt.Sprintf("URI : %s%s", header[1], request["GET"]))
+
+			fmt.Fprint(conn, "HTTP/1.1 200 OK\r\n")
+			fmt.Fprintf(conn, "Content-Length: %d\r\n", len(body))
+			fmt.Fprint(conn, "Content-Type: text/html\r\n")
+			fmt.Fprint(conn, "\r\n")
+			fmt.Fprint(conn, body)
+		}
+	}
 }
